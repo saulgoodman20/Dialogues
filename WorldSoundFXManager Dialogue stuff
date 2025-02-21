@@ -1,0 +1,58 @@
+[Header("Dialogue Audio Source")]
+public AudioSource dialogueAudioSource;
+public Coroutine dialogueCleanupCoroutine;
+
+public void PlayDialogueFX(AudioClip clip, float volume = 1f, float pitch = 1f)
+{
+    if (dialogueCleanupCoroutine != null)
+    {
+        StopCoroutine(dialogueCleanupCoroutine);
+        dialogueCleanupCoroutine = null;
+    }
+
+    if (dialogueAudioSource == null)
+    {
+        dialogueAudioSource = gameObject.AddComponent<AudioSource>();
+        dialogueAudioSource.playOnAwake = false;
+        dialogueAudioSource.loop = false;
+    }
+
+    dialogueAudioSource.Stop();
+
+    dialogueAudioSource.clip = clip;
+    dialogueAudioSource.volume = volume;
+    dialogueAudioSource.pitch = pitch;
+    dialogueAudioSource.Play();
+
+    dialogueCleanupCoroutine = StartCoroutine(ClearDialogueAudioSourceAfterSoundEnds(clip));
+}
+
+public void StopDialogueCleanup()
+{
+    if (dialogueCleanupCoroutine != null)
+    {
+        StopCoroutine(dialogueCleanupCoroutine);
+        dialogueCleanupCoroutine = null;
+    }
+
+    if (dialogueAudioSource != null)
+    {
+        dialogueAudioSource.Stop();
+        dialogueAudioSource.clip = null;
+    }
+}
+
+
+private IEnumerator ClearDialogueAudioSourceAfterSoundEnds(AudioClip clip)
+{
+    yield return new WaitForSeconds(clip.length + 0.05f);
+    dialogueAudioSource.clip = null;
+    dialogueCleanupCoroutine = null;
+}
+
+
+public void DestroyCurrentDialogueAudioSource()
+{
+    Destroy(dialogueAudioSource);
+    dialogueAudioSource = null;
+}

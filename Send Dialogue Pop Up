@@ -1,0 +1,52 @@
+[Header("Dialogue Pop Up")]
+public GameObject dialoguePopUpGameObject;
+[SerializeField] TextMeshProUGUI dialoguePopUpText;
+
+public IEnumerator SendDialoguePopUpAndFadeAfterAudioEnds(Dialogue dialogueAsset)
+{
+	// If there's no dialogueAsset or there isn't a VoiceLine in the dialogueAsset
+	// we break out and don't proceed with the method
+    if (dialogueAsset == null)
+        yield break;
+    if (dialogueAsset.VoiceLine == null)
+        yield break;
+
+	// Set popUpWindowIsOpen to true so that the game knows there's a pop up opened
+	// (this should prevent other pop ups if you set it up this way)
+    PlayerUIManager.instance.popUpWindowIsOpen = true;
+    dialoguePopUpGameObject.SetActive(true);
+
+    dialoguePopUpText.text = "";
+
+    WorldSoundFXManager.instance.PlayDialogueFX(dialogueAsset.VoiceLine, 0.2f);
+
+    float startTime = Time.time;
+    float clipLength = dialogueAsset.VoiceLine.length;
+    float endTime = startTime + clipLength;
+
+    var lines = dialogueAsset.TimedLines;
+    int currentLineIndex = 0;
+
+    if (lines == null || lines.Count == 0)
+    {
+        dialoguePopUpText.text = dialogueAsset.DialogueText;
+    }
+
+    while (Time.time < endTime)
+    {
+        float playbackTime = Time.time - startTime;
+
+        if (lines != null && currentLineIndex < lines.Count)
+        {
+            if (playbackTime >= lines[currentLineIndex].time)
+            {
+                dialoguePopUpText.text = lines[currentLineIndex].text;
+
+                currentLineIndex++;
+            }
+        }
+        yield return null;
+    }
+    dialoguePopUpGameObject.SetActive(false);
+    PlayerUIManager.instance.popUpWindowIsOpen = false;
+}
