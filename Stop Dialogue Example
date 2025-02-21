@@ -1,0 +1,82 @@
+using FIMSpace.FLook;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace DF
+{
+    public class Util_StopDialogueIfPlayerLeaves : MonoBehaviour
+    {
+        [SerializeField] private NPCDialogueInteractable interactableCollider;
+        [SerializeField] public bool isShuttingDownDialogue = false;
+        [SerializeField] private float leaveDistanceThreshold = 5f;
+        [SerializeField] private float currentDistance = 0f;
+
+        private void Update()
+        {
+            if (isShuttingDownDialogue) return;
+            if (PlayerUIManager.instance.playerUIPopUpManager.dialoguePopUpGameObject.activeSelf)
+            {
+                PlayerManager localPlayer = FindLocalPlayer();
+                if (localPlayer == null) return;
+                currentDistance = Vector3.Distance(localPlayer.transform.position, transform.position);
+                if (currentDistance > leaveDistanceThreshold)
+                {
+                    StopDialogue();
+                }
+            }
+        }
+
+        private PlayerManager FindLocalPlayer()
+        {
+            foreach (var p in FindObjectsByType<PlayerManager>(FindObjectsSortMode.None))
+            {
+                if (p.IsLocalPlayer)
+                    return p;
+            }
+            return null;
+        }
+
+        private void StopDialogue()
+        {
+            if (interactableCollider == null)
+                return;
+
+            isShuttingDownDialogue = true;
+            CharacterManager npc = interactableCollider.GetComponentInParent<CharacterManager>();
+            interactableCollider.StopDialogueCoroutines();
+
+            PlayerManager localPlayer = FindLocalPlayer();
+            if (localPlayer == null) return;
+
+            if (localPlayer.playerNetworkManager.isCurrentlyListeningToDialogue.Value ||
+                PlayerUIManager.instance.playerUIPopUpManager.dialoguePopUpGameObject.activeSelf)
+            {
+                npc.characterDialogueManager.StopLookingAtTarget();
+                PlayerUIManager.instance.playerUIPopUpManager.StopDialogueInstantly();
+                npc.characterDialogueManager.isCurrentlySpeaking = false;
+                npc.characterDialogueManager.SelectRandomExitDialogue();
+                StartCoroutine(interactableCollider.RestoreColliderAfterDialogueCanceled(
+                    npc.characterDialogueManager.selectedExitDialogue.VoiceLine.length,
+                    localPlayer,
+                    npc));
+            }
+        }
+    }
+}
+
+
+//
+
+
+public void StopDialogueCoroutines()
+{
+    if (dialoguePopUpCoroutine != null)
+    {
+        StopCoroutine(dialoguePopUpCoroutine);
+    }
+    if (restoreColliderCoroutine != null)
+    {
+        StopCoroutine(restoreColliderCoroutine);
+    }
+}
